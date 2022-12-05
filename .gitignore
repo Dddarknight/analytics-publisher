@@ -127,3 +127,9 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+data.csv
+bar_plot.png
+dynamics_plot.png
+client_secrets.json
+celerybeat-schedule.db

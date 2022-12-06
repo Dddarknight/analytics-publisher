@@ -43,6 +43,7 @@ def build_dynamics_plot(statistics):
         'date_time').groupby('club').resample('1T').agg(
             view_count=('view_count', 'sum')
         )
+    print(data_grouped_by_club)
     plot = sns.lineplot(
         data=data_grouped_by_club,
         x="date_time", y="view_count", hue='club'

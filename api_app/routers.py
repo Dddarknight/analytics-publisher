@@ -3,11 +3,15 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from starlette.requests import Request
+from fastapi.responses import FileResponse
 
 from api_app import dependencies
 from api_app.clubs import crud, schemas
-from api_app.events import make_event
-
+from api_app.events import make_event, get_filtered_statistics
+from api_app.export import build_bar_plot, build_dynamics_plot
+from api_app.export import (
+    PNG_FILE_NAME_BARS, PNG_FILE_NAME_DYNAMICS
+)
 
 router = APIRouter()
 
@@ -42,3 +46,19 @@ async def create_club(*,
                       club: schemas.ClubCreate,
                       db: Session = Depends(dependencies.get_db)):
     return crud.create_club(db=db, club=club)
+
+
+@router.get('/file-dataset/{period_in_minutes}', response_class=FileResponse)
+async def get_dataset(period_in_minutes: int):
+    statistics = await get_filtered_statistics(
+        period_in_minutes=period_in_minutes)
+    build_bar_plot(statistics)
+    return PNG_FILE_NAME_BARS
+
+
+@router.get('/file-dynamics/{period_in_minutes}', response_class=FileResponse)
+async def get_dynamics(period_in_minutes: int):
+    statistics = await get_filtered_statistics(
+        period_in_minutes=period_in_minutes)
+    build_dynamics_plot(statistics)
+    return PNG_FILE_NAME_DYNAMICS

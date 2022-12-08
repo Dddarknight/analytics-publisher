@@ -8,7 +8,7 @@ The app consists of API service, which provides information about football clubs
     1) GET /clubs (information about clubs)
     2) GET /clubs/{club_id} (information about each club)
     3) POST /clubs (creates a club)
-and also endpoints to export information into the telegram bot.
+    4) endpoints to export information into the telegram bot.
 
 - The data about club are stored in PostgreSQL, the data about pages' views are stored in MongoDB (inc. time, user IP).
 - There are cron jobs, implemented with using Celery, which export data about pages' views to .csv file and to plots in .png format.

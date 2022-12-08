@@ -14,6 +14,8 @@ PNG_FILE_NAME_BARS = 'bar_plot.png'
 
 PNG_FILE_NAME_DYNAMICS = 'dynamics_plot.png'
 
+PNG_FILE_NAME_DISPLOT = 'displot.png'
+
 
 def export_db_data_to_csv(statistics):
     df = pd.DataFrame.from_records(statistics)
@@ -36,20 +38,31 @@ def build_bar_plot(statistics):
 
 
 def build_dynamics_plot(statistics):
-    df = pd.DataFrame.from_records(statistics)
-    df['date_time'] = pd.to_datetime(df['date_time'])
-    df['view_count'] = 1
-    data_grouped_by_club = df.set_index(
+    dynamics_df = pd.DataFrame.from_records(statistics)
+    dynamics_df['date_time'] = pd.to_datetime(dynamics_df['date_time'])
+    dynamics_df['view_count'] = 1
+    data_grouped_by_club_dynamics = dynamics_df.set_index(
         'date_time').groupby('club').resample('1T').agg(
             view_count=('view_count', 'sum')
         )
-    print(data_grouped_by_club)
     plot = sns.lineplot(
-        data=data_grouped_by_club,
+        data=data_grouped_by_club_dynamics,
         x="date_time", y="view_count", hue='club'
     )
     fig = plot.figure
     fig.savefig(PNG_FILE_NAME_DYNAMICS)
+
+
+def build_displot(statistics):
+    df = pd.DataFrame.from_records(statistics)
+    df['date_time'] = pd.to_datetime(df['date_time'])
+    df['minute_in_hour'] = df['date_time'].dt.minute
+    plot = sns.displot(
+        df,
+        x="minute_in_hour", hue="club", kind="kde"
+    )
+    fig = plot.figure
+    fig.savefig(PNG_FILE_NAME_DISPLOT)
 
 
 def get_google_drive():

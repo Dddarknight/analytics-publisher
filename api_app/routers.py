@@ -8,10 +8,11 @@ from fastapi.responses import FileResponse
 from api_app import dependencies
 from api_app.clubs import crud, schemas
 from api_app.events import make_event, get_filtered_statistics
-from api_app.export import build_bar_plot, build_dynamics_plot
+from api_app.export import build_bar_plot, build_dynamics_plot, build_displot
 from api_app.export import (
-    PNG_FILE_NAME_BARS, PNG_FILE_NAME_DYNAMICS
+    PNG_FILE_NAME_BARS, PNG_FILE_NAME_DYNAMICS, PNG_FILE_NAME_DISPLOT
 )
+
 
 router = APIRouter()
 
@@ -62,3 +63,11 @@ async def get_dynamics(period_in_minutes: int):
         period_in_minutes=period_in_minutes)
     build_dynamics_plot(statistics)
     return PNG_FILE_NAME_DYNAMICS
+
+
+@router.get('/file-displot/{period_in_minutes}', response_class=FileResponse)
+async def get_displot(period_in_minutes: int):
+    statistics = await get_filtered_statistics(
+        period_in_minutes=period_in_minutes)
+    build_displot(statistics)
+    return PNG_FILE_NAME_DISPLOT

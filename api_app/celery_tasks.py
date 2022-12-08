@@ -7,10 +7,11 @@ from celery.schedules import crontab
 from dotenv import load_dotenv
 
 from api_app.events import get_filtered_statistics
-from api_app.export import export_db_data_to_csv, build_bar_plot
+from api_app.export import export_db_data_to_csv, build_bar_plot, build_displot
 from api_app.export import export_file_to_google, build_dynamics_plot
 from api_app.export import (
-    CSV_FILE_NAME, PNG_FILE_NAME_BARS, PNG_FILE_NAME_DYNAMICS
+    CSV_FILE_NAME, PNG_FILE_NAME_BARS,
+    PNG_FILE_NAME_DYNAMICS, PNG_FILE_NAME_DISPLOT
 )
 
 
@@ -20,7 +21,7 @@ load_dotenv()
 
 PERIOD_FOR_GETTING_STATISTICS = 60
 
-PERIOD_FOR_CELERY_TASK = 60
+PERIOD_FOR_CELERY_TASK = 1
 
 RABBIT_URL = os.getenv('RABBIT_URL')
 
@@ -33,46 +34,47 @@ celery = Celery(
 celery.conf.enable_utc = True
 
 
-async def publish_statistics():
+async def publish_data(
+        export_data,
+        period_for_getting_statistics,
+        file_name,
+        extension):
     statistics = await get_filtered_statistics(
-        period_in_minutes=PERIOD_FOR_GETTING_STATISTICS)
-    export_db_data_to_csv(statistics)
+        period_in_minutes=period_for_getting_statistics)
+    export_data(statistics)
     export_file_to_google(
-        file_name=CSV_FILE_NAME,
-        file_extension='csv')
+        file_name=file_name,
+        file_extension=extension)
 
 
 @shared_task()
 def sync_task_statistics():
-    async_to_sync(publish_statistics)()
-
-
-async def publish_bar_plot():
-    statistics = await get_filtered_statistics(
-        period_in_minutes=PERIOD_FOR_GETTING_STATISTICS)
-    build_bar_plot(statistics)
-    export_file_to_google(
-        file_name=PNG_FILE_NAME_BARS,
-        file_extension='png')
+    async_to_sync(publish_data)(
+        export_db_data_to_csv, PERIOD_FOR_GETTING_STATISTICS,
+        CSV_FILE_NAME, 'csv')
 
 
 @shared_task()
 def sync_task_bar_plot():
-    async_to_sync(publish_bar_plot)()
-
-
-async def publish_dynamics_plot():
-    statistics = await get_filtered_statistics(
-        period_in_minutes=PERIOD_FOR_GETTING_STATISTICS)
-    build_dynamics_plot(statistics)
-    export_file_to_google(
-        file_name=PNG_FILE_NAME_DYNAMICS,
-        file_extension='png')
+    async_to_sync(publish_data)(
+        build_bar_plot, PERIOD_FOR_GETTING_STATISTICS,
+        PNG_FILE_NAME_BARS, 'png')
 
 
 @shared_task()
 def sync_task_dynamics_plot():
-    async_to_sync(publish_dynamics_plot)()
+    async_to_sync(publish_data)(
+        build_dynamics_plot, PERIOD_FOR_GETTING_STATISTICS,
+        PNG_FILE_NAME_DYNAMICS, 'png'
+    )
+
+
+@shared_task()
+def sync_task_displot():
+    async_to_sync(publish_data)(
+        build_displot, PERIOD_FOR_GETTING_STATISTICS,
+        PNG_FILE_NAME_DISPLOT, 'png'
+    )
 
 
 celery.conf.beat_schedule = {
@@ -86,6 +88,10 @@ celery.conf.beat_schedule = {
     },
     'publish_dynamics_plot': {
         'task': 'api_app.celery_tasks.sync_task_dynamics_plot',
+        'schedule': crontab(minute=f'*/{PERIOD_FOR_CELERY_TASK}')
+    },
+    'publish_displot': {
+        'task': 'api_app.celery_tasks.sync_task_displot',
         'schedule': crontab(minute=f'*/{PERIOD_FOR_CELERY_TASK}')
     }
 }

@@ -4,11 +4,8 @@ lint:
 install:
 	poetry install
 
-# test-coverage:
-# 	poetry run pytest --cov=. --cov-report xml
-
-# test:
-# 	poetry run pytest
-
 run:
 	poetry run uvicorn api_app.server:app --reload
+
+bot:
+	poetry run python bot/bot.py

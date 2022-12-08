@@ -17,8 +17,8 @@ async def get_pl_teams():
         'season': SEASON
     }
     headers = {
-    'x-rapidapi-host': "v3.football.api-sports.io",
-    'x-rapidapi-key': API_KEY
+        'x-rapidapi-host': "v3.football.api-sports.io",
+        'x-rapidapi-key': API_KEY
     }
     async with aiohttp.ClientSession() as session:
         async with session.get(

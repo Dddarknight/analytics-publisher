@@ -5,11 +5,9 @@ The app consists of API service, which provides information about football clubs
 **API service**
 
 - API service has endpoints:
-|   | Description |
-|----------|---------|
-| GET /clubs |  information about clubs |
-| GET /clubs/{club_id} | information about each club |
-| POST /clubs |  creates a club |
+    1) GET /clubs (information about clubs)
+    2) GET /clubs/{club_id} (information about each club)
+    3) POST /clubs (creates a club)
 and also endpoints to export information into the telegram bot.
 
 - The data about club are stored in PostgreSQL, the data about pages' views are stored in MongoDB (inc. time, user IP).

@@ -23,6 +23,10 @@ The app consists of API service, which provides information about football clubs
 - In the bot with /start you will have several buttons:
     - buttons for getting plots,
     - buttons for getting information, using a source [Api-Football](https://www.api-football.com).
+- First you'll receive the id of Celery task, which is responsible for plot building.
+- You can check the status of the task by sending task ID to the bot. The bot will return you on of several possibilities (PENDING, STARTED, SUCCESS).
+- If the task status is SUCCESS, you can receive the plot from bot by sending the command /result.
+- The bot asks for the data from API service. Information about tasks' statuses is stored in Redis database (which is used as backend in Celery app).
 ____
 
 ![App structure](image/app_diagram.png "App structure") 
@@ -38,6 +42,7 @@ This project was built using these tools:
 | [PostgreSQL](https://www.postgresql.org/) |  "An open source object-relational database system" |
 | [SQLAlchemy](https://www.sqlalchemy.org/) |  "The Python SQL toolkit and Object Relational Mapper" |
 | [MongoDB](https://www.mongodb.com/) |  "A NoSQL database program" |
+| [Redis](https://redis.io/) |  "The open source, in-memory data store" |
 | [seaborn](https://seaborn.pydata.org/index.html) | "A Python data visualization library based on matplotlib" |
 | [poetry](https://python-poetry.org/) |  "Python dependency management and packaging made easy" |
 
@@ -73,14 +78,16 @@ $ make run
 
 **Launch a bot**
 ```
-$ make bot
+$ make bot_
 ```
 
 **Launch Celery**
 ```
-# You have to run celery in two terminals with these commands.
 
+# Launch Celery scheduled tasks
 $ celery -A api_app.celery_tasks beat --loglevel=info
+
+# Launch the Celery worker (it's also necessary for the bot)
 $ celery -A api_app.celery_tasks worker --loglevel=info --pool solo
 ```
 

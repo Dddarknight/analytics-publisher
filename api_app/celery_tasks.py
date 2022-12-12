@@ -25,13 +25,16 @@ PERIOD_FOR_CELERY_TASK = 1
 
 RABBIT_URL = os.getenv('RABBIT_URL')
 
-celery = Celery(
+celery_app = Celery(
     __name__,
-    backend='rpc://',
-    broker=RABBIT_URL
+    backend='redis://localhost:6379',
+    broker=RABBIT_URL,
+    task_track_started=True,
+    task_ignore_result=False,
+    enable_utc=True
 )
 
-celery.conf.enable_utc = True
+celery_app.autodiscover_tasks()
 
 
 async def publish_data(
@@ -77,7 +80,7 @@ def sync_task_displot():
     )
 
 
-celery.conf.beat_schedule = {
+celery_app.conf.beat_schedule = {
     'publish_statistics': {
         'task': 'api_app.celery_tasks.sync_task_statistics',
         'schedule': crontab(minute=f"*/{PERIOD_FOR_CELERY_TASK}")

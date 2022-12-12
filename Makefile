@@ -7,5 +7,5 @@ install:
 run:
 	poetry run uvicorn api_app.server:app --reload
 
-bot:
+bot_:
 	poetry run python bot/bot.py

@@ -134,3 +134,4 @@ dynamics_plot.png
 client_secrets.json
 celerybeat-schedule.db
 displot.png
+bot.log

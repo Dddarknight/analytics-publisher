@@ -3,18 +3,28 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from starlette.requests import Request
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 
 from api_app import dependencies
+from api_app.database import cache_db
 from api_app.clubs import crud, schemas
-from api_app.events import make_event, get_filtered_statistics
-from api_app.export import build_bar_plot, build_dynamics_plot, build_displot
+from api_app.events import make_event
 from api_app.export import (
     PNG_FILE_NAME_BARS, PNG_FILE_NAME_DYNAMICS, PNG_FILE_NAME_DISPLOT
+)
+from api_app.celery_tasks import (
+    celery_app, sync_task_bar_plot, sync_task_dynamics_plot, sync_task_displot
 )
 
 
 router = APIRouter()
+
+
+FILES = {
+    'dynamics': PNG_FILE_NAME_DYNAMICS,
+    'dataset': PNG_FILE_NAME_BARS,
+    'displot': PNG_FILE_NAME_DISPLOT,
+}
 
 
 @router.get("/clubs/", response_model=List[schemas.Club])
@@ -51,23 +61,33 @@ async def create_club(*,
 
 @router.get('/file-dataset/{period_in_minutes}', response_class=FileResponse)
 async def get_dataset(period_in_minutes: int):
-    statistics = await get_filtered_statistics(
-        period_in_minutes=period_in_minutes)
-    build_bar_plot(statistics)
-    return PNG_FILE_NAME_BARS
+    task = sync_task_bar_plot.apply_async(countdown=10)
+    return {'status': task.status, 'id': task.id}
 
 
 @router.get('/file-dynamics/{period_in_minutes}', response_class=FileResponse)
 async def get_dynamics(period_in_minutes: int):
-    statistics = await get_filtered_statistics(
-        period_in_minutes=period_in_minutes)
-    build_dynamics_plot(statistics)
-    return PNG_FILE_NAME_DYNAMICS
+    task = sync_task_dynamics_plot.apply_async(countdown=10)
+    return {'status': task.status, 'id': task.id}
 
 
-@router.get('/file-displot/{period_in_minutes}', response_class=FileResponse)
+@router.get('/file-displot/{period_in_minutes}', response_class=JSONResponse)
 async def get_displot(period_in_minutes: int):
-    statistics = await get_filtered_statistics(
-        period_in_minutes=period_in_minutes)
-    build_displot(statistics)
-    return PNG_FILE_NAME_DISPLOT
+    task = sync_task_displot.apply_async(countdown=60)
+    return {'status': task.status, 'id': task.id}
+
+
+@router.get('/tasks/{id}', response_class=JSONResponse)
+async def get_task_status(id):
+    task = celery_app.AsyncResult(id)
+    status = task.status
+    return {'status': status}
+
+
+@router.get('/tasks/{id}/result', response_class=FileResponse)
+async def get_result_file(id):
+    task_type = cache_db.get('current_task_type').decode('utf-8')
+    task = celery_app.AsyncResult(id)
+    status = task.status
+    if status == 'SUCCESS':
+        return FILES[task_type]

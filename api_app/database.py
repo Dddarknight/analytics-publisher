@@ -1,6 +1,7 @@
 import os
 import motor.motor_asyncio
 import databases
+import redis
 
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
@@ -27,3 +28,5 @@ mongo_client = motor.motor_asyncio.AsyncIOMotorClient(
     host=os.getenv('HOST'), port=27017)
 
 DB = 'clubs'
+
+cache_db = redis.Redis(db=2)

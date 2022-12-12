@@ -1,14 +1,16 @@
 import os
 import sys
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import Updater
+from telegram.ext import Updater, MessageHandler, filters
 from telegram.ext.commandhandler import CommandHandler
 from telegram.ext.callbackqueryhandler import CallbackQueryHandler
 from dotenv import load_dotenv
 from asgiref.sync import async_to_sync
 
-from data_receiver import export_data_to_bot
+from data_receiver import push_task_to_api, get_celery_info, get_result
 from api_football import get_pl_teams
+from database import init_db
+from logger import logger
 
 
 load_dotenv()
@@ -22,6 +24,9 @@ API_PORT = os.getenv('API_PORT')
 URL_DATASET = f'http://{HOST}:{API_PORT}/file-dataset/{PERIOD}'
 URL_DYNAMICS = f'http://{HOST}:{API_PORT}/file-dynamics/{PERIOD}'
 URL_DISPLOT = f'http://{HOST}:{API_PORT}/file-displot/{PERIOD}'
+
+
+cache_db = init_db()
 
 
 def start(update, context):
@@ -47,15 +52,26 @@ def button(update, context):
     query.edit_message_text(text=f"Selected option: {query.data}")
     id = query.message.chat.id
     if query.data == 'dynamics':
+        cache_db.set('current_task_type', 'dynamics')
         async_to_sync(
-            export_data_to_bot)(update, context, id, URL_DYNAMICS)
+            push_task_to_api)(update, context, id, URL_DYNAMICS)
     elif query.data == 'dataset':
-        async_to_sync(export_data_to_bot)(update, context, id, URL_DATASET)
+        cache_db.set('current_task_type', 'dataset')
+        async_to_sync(push_task_to_api)(update, context, id, URL_DATASET)
     elif query.data == 'displot':
-        async_to_sync(export_data_to_bot)(update, context, id, URL_DISPLOT)
+        cache_db.set('current_task_type', 'displot')
+        async_to_sync(push_task_to_api)(update, context, id, URL_DISPLOT)
     elif query.data == 'pl':
         teams = async_to_sync(get_pl_teams)()
         query.edit_message_text(text='\n'.join(teams))
+
+
+def reply(update, context):
+    user_input = update.message.text
+    if not user_input.startswith('/'):
+        cache_db.set('current_id', user_input)
+    update.message.reply_text(
+        async_to_sync(get_celery_info)(user_input))
 
 
 def error(update, context):
@@ -63,10 +79,21 @@ def error(update, context):
     pass
 
 
+def result(update, context):
+    task_id = cache_db.get('current_id').decode('utf-8')
+    logger.info(f'task {task_id}')
+    chat_id = update.message.chat.id
+    async_to_sync(get_result)(update, context, chat_id, task_id)
+    cache_db.set('current_id', None)
+    cache_db.set('current_task_type', None)
+
+
 def main():
     updater = Updater(API_TOKEN, use_context=True)
     updater.dispatcher.add_handler(CommandHandler("start", start))
+    updater.dispatcher.add_handler(CommandHandler("result", result))
     updater.dispatcher.add_handler(CallbackQueryHandler(button))
+    updater.dispatcher.add_handler(MessageHandler(filters.Filters.text, reply))
     updater.dispatcher.add_error_handler(error)
     updater.start_polling()
     updater.idle()

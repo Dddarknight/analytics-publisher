@@ -11,7 +11,7 @@ SEASON = 2022
 API_KEY = os.getenv('API_FOOTBALL')
 
 
-async def get_pl_teams():
+async def get_premier_league_teams():
     params = {
         'league': LEAGUE,
         'season': SEASON

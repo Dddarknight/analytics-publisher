@@ -9,30 +9,25 @@ load_dotenv()
 HOST = os.getenv('HOST')
 API_PORT = os.getenv('API_PORT')
 
-NO_DATA = "Requested data don't exist"
 
-
-async def push_task_to_api(bot, context, chat_id, url):
+async def post_task(url):
     async with aiohttp.ClientSession() as session:
         async with session.get(url) as response:
             data = await response.json()
-            context.bot.send_message(chat_id, data)
+            return data
 
 
-async def get_celery_info(task_id):
+async def get_task_info(task_id):
     url = f'http://{HOST}:{API_PORT}/tasks/{task_id}'
     async with aiohttp.ClientSession() as session:
         async with session.get(url) as response:
             data = await response.json()
-            return data['status']
+            return data
 
 
-async def get_result(bot, context, chat_id, task_id):
-    url = f'http://{HOST}:{API_PORT}/tasks/{task_id}/result'
+async def get_result(task_id):
+    url = f'http://{HOST}:{API_PORT}/result/{task_id}'
     async with aiohttp.ClientSession() as session:
         async with session.get(url) as response:
             data = await response.read()
-            if response.status == 200:
-                context.bot.send_document(chat_id, data)
-            else:
-                context.bot.send_message(chat_id, NO_DATA)
+            return response.status, data
